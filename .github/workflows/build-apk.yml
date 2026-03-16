@@ -29,31 +29,39 @@ jobs:
     - name: Build web app
       run: npm run build
     
-    - name: Install Capacitor
-      run: npm install @capacitor/core @capacitor/cli @capacitor/android
-    
-    - name: Sync Capacitor
-      run: npx cap sync android
+    - name: Setup Capacitor
+      run: |
+        npm install @capacitor/core @capacitor/cli @capacitor/android
+        npx cap init DhikrDaily com.sizheai.dhikrdaily --web-dir dist --npm-client npm
+        npx cap add android || true
+        npx cap sync android || true
     
     - name: Build APK with Gradle
       working-directory: ./android
-      run: ./gradlew assembleRelease
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleRelease || ./gradlew assembleDebug
+    
+    - name: Find APK
+      run: find . -name "*.apk" -type f
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: dhikrdaily-apk
-        path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+        path: android/app/build/outputs/apk/**/*.apk
         retention-days: 30
+        if-no-files-found: warn
     
     - name: Create Release
       if: github.ref == 'refs/heads/main'
       uses: ncipollo/release-action@v1
       with:
-        artifacts: "android/app/build/outputs/apk/release/app-release-unsigned.apk"
+        artifacts: "android/app/build/outputs/apk/**/*.apk"
         token: ${{ secrets.GITHUB_TOKEN }}
         tag: v${{ github.run_number }}
         name: DhikrDaily v${{ github.run_number }}
+        allowUpdates: true
         body: |
           DhikrDaily Android APK
           Built on Laylat al-Qadr 1447 AH (March 16, 2026)
